@@ -20,7 +20,6 @@ import (
 
 	"github.com/giantswarm/crd-docs-generator/pkg/config"
 	"github.com/giantswarm/crd-docs-generator/pkg/crd"
-	"github.com/giantswarm/crd-docs-generator/pkg/git"
 	"github.com/giantswarm/crd-docs-generator/pkg/metadata"
 	"github.com/giantswarm/crd-docs-generator/pkg/output"
 )
@@ -53,26 +52,6 @@ type Annotation struct {
 	Support       []AnnotationSupportRelease
 }
 
-const (
-	// Target path for our clone of the apiextensions repo.
-	repoFolder = "/tmp/gitclone"
-
-	// Source folder for Giant Swarm CRDs in YAML format in the apiextensions repo.
-	crdFolder = repoFolder + "/config/crd"
-
-	// Source folder for upstream CRDs in YAML format in the apiextensions repo.
-	upstreamCRDFolder = repoFolder + "/helm"
-
-	upstreamFileName = "upstream.yaml"
-
-	crFolder = repoFolder + "/docs/cr"
-
-	annotationsFolder = repoFolder + "/pkg/annotation"
-
-	// Path for Markdown output.
-	outputFolderPath = "./output"
-)
-
 func main() {
 	var err error
 
@@ -88,7 +67,7 @@ func main() {
 			},
 		}
 
-		c.PersistentFlags().StringVar(&crdDocsGenerator.configFilePath, "config", "./config.yaml", "Path to the configuration file.")
+		c.PersistentFlags().StringVar(&crdDocsGenerator.configFilePath, "config", "", "Path to the configuration file.")
 		c.PersistentFlags().StringVar(&crdDocsGenerator.sourceCommitRef, "commit-reference", "main", "Commit SHA, tag or branch name to use of the CRD source repository.")
 		crdDocsGenerator.rootCommand = c
 	}
@@ -101,6 +80,24 @@ func main() {
 
 // generateCrdDocs is the function called from our main CLI command.
 func generateCrdDocs(configFilePath, commitRef string) error {
+	// Target path for our clone of the apiextensions repo.
+	repoFolder := "/home/alban/go/src/github.com/kinvolk/inspektor-gadget"
+
+	// Source folder for Giant Swarm CRDs in YAML format in the apiextensions repo.
+	crdFolder := repoFolder + "/pkg/resources/crd/bases"
+
+	// Source folder for upstream CRDs in YAML format in the apiextensions repo.
+	upstreamCRDFolder := repoFolder + "/helm"
+
+	upstreamFileName := "upstream.yaml"
+
+	crFolder := repoFolder + "/pkg/resources/samples"
+
+	annotationsFolder := repoFolder + "/pkg/annotation"
+
+	// Path for Markdown output.
+	outputFolderPath := repoFolder + "/docs/cr"
+
 	configuration, err := config.Read(configFilePath)
 	if err != nil {
 		return microerror.Mask(err)
@@ -110,19 +107,20 @@ func generateCrdDocs(configFilePath, commitRef string) error {
 	annotationFiles := []string{}
 
 	// Clone the repository containing CRDs
-	err = git.CloneRepositoryShallow(
-		configuration.SourceRepository.Organization,
-		configuration.SourceRepository.ShortName,
-		commitRef,
-		repoFolder)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	defer os.RemoveAll(repoFolder)
+	/*
+		err = git.CloneRepositoryShallow(
+			configuration.SourceRepository.Organization,
+			configuration.SourceRepository.ShortName,
+			commitRef,
+			repoFolder)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+		//defer os.RemoveAll(repoFolder)
+	*/
 
 	// Read docs config/metadata
-	md, err := metadata.Read(repoFolder + "/" + configuration.SourceRepository.MetadataPath)
+	md, err := metadata.Read(repoFolder + "/" + "docs-config.yaml")
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -134,12 +132,13 @@ func generateCrdDocs(configFilePath, commitRef string) error {
 		}
 		return nil
 	})
-	if err != nil {
-		return microerror.Mask(err)
-	}
+	//if err != nil {
+	//	return microerror.Mask(err)
+	//}
 
 	// Collect our own CRD YAML files
 	err = filepath.Walk(crdFolder, func(path string, info os.FileInfo, err error) error {
+		fmt.Printf("checking path %v\n", path)
 		if strings.HasSuffix(path, ".yaml") {
 			crdFiles = append(crdFiles, path)
 		}
@@ -196,8 +195,10 @@ func generateCrdDocs(configFilePath, commitRef string) error {
 			}
 		}
 	}
+	fmt.Printf("loop crd %v\n", crdFiles)
 
 	for _, crdFile := range crdFiles {
+		fmt.Printf("reading %v\n", crdFile)
 		crds, err := crd.Read(crdFile)
 		if err != nil {
 			fmt.Printf("Something went wrong in crd.Read: %#v\n", err)
@@ -214,6 +215,7 @@ func generateCrdDocs(configFilePath, commitRef string) error {
 				fmt.Printf("%s - is hidden explicitly, skipping\n", crds[i].Name)
 				continue
 			}
+			fmt.Printf("reading meta %v\n", meta)
 
 			templatePath := path.Dir(configFilePath) + "/" + configuration.TemplatePath
 

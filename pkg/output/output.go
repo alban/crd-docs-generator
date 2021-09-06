@@ -126,7 +126,7 @@ func WritePage(crd apiextensionsv1.CustomResourceDefinition,
 
 	// Try to read example CRs for all versions.
 	for _, version := range data.Versions {
-		crFileName := fmt.Sprintf("%s/%s_%s_%s.yaml", crFolder, crd.Spec.Group, version, crd.Spec.Names.Singular)
+		crFileName := fmt.Sprintf("%s/%s", crFolder, "trace-process-collector.yaml")
 		exampleCR, err := ioutil.ReadFile(crFileName)
 		if err != nil {
 			fmt.Printf("%s - CR example is missing\n", crd.Name)

@@ -1,0 +1,6 @@
+source_repository:
+  url: https://github.com/kinvolk/inspektor-gadget
+  organization: kinvolk
+  short_name: inspektor-gadget
+  metadata_path: docs-config.yaml
+template_path: ig-crd.template
